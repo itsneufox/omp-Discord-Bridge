@@ -300,6 +300,18 @@ NativePawnScript* findPawnScriptWithPublic(const char* name, NativePawnScript* p
 	return nullptr;
 }
 
+DiscordGuild* ensureGuildCached(const std::string& guildId)
+{
+	DiscordBridgeComponent* bridge = component();
+	if (!bridge || guildId.empty()) return nullptr;
+	if (auto* cached = static_cast<DiscordGuild*>(bridge->findGuildById(guildId))) return cached;
+	// Members only exist inside their guild.  Without the guild in the cache
+	// (no GUILDS intent, or GUILD_CREATE has not arrived yet) freshly fetched
+	// member data would be dropped and every getter would answer with empty
+	// values, so create the guild from its ID and let the data land in it.
+	return bridge->upsertGuildFromJson(DiscordJson { { "id", guildId } }.dump(-1, ' ', false, DiscordJson::error_handler_t::replace), false);
+}
+
 void logWarning(const std::string& message)
 {
 	DiscordBridgeComponent* bridge = component();
@@ -476,12 +488,49 @@ bool executePawnCallback(const PreparedPawnCallback& prepared, const std::vector
 		}
 	}
 
+	if (g_debugMode)
+	{
+		// The public must declare the callback's own leading parameters before the
+		// format arguments; a missing one shifts every later parameter, which is
+		// why an integer then arrives as a string address.
+		std::string call = prepared.name + "(";
+		for (size_t i = 0; i < leading.size(); ++i)
+		{
+			call += (i ? ", " : "") + std::to_string(leading[i]);
+		}
+		for (size_t i = 0; i < prepared.args.size(); ++i)
+		{
+			call += (i || !leading.empty()) ? ", " : "";
+			const PawnCallbackArg& arg = prepared.args[i];
+			switch (arg.type)
+			{
+				case PawnCallbackArg::Type::String: call += "\"" + arg.text + "\""; break;
+				case PawnCallbackArg::Type::Array: call += "[" + std::to_string(arg.array.size()) + " cells]"; break;
+				case PawnCallbackArg::Type::Reference: call += "&" + std::to_string(arg.referenceAddress); break;
+				default: call += std::to_string(arg.value); break;
+			}
+		}
+		logInfo("[DiscordBridge] calling " + call + ") with " + std::to_string(leading.size())
+			+ " leading parameter(s) before the format arguments");
+	}
+
 	ScopedDccValue<DccCallbackContext> context(g_dccCallback,
 		{ prepared.scriptId, prepared.dccResult, leading.empty() ? 0 : leading.front() });
 	cell result = 0;
 	const int error = script->Exec(&result, publicIndex);
 	script->Release(heap);
 	return error == AMX_ERR_NONE;
+}
+
+// Pawn passes every variadic argument by reference: params[] holds the address
+// of the value, so a number has to be read through it.  Strings and arrays are
+// already addresses of the data itself.
+bool readVariadicNumber(AMX* amx, cell address, cell& value)
+{
+	cell* reference = nullptr;
+	if (pawnGetAddr(amx, address, &reference) != AMX_ERR_NONE || !reference) return false;
+	value = *reference;
+	return true;
 }
 
 bool callbackParametersValid(AMX* amx, cell callbackParam, cell formatParam, cell* params, size_t firstParam)
@@ -511,11 +560,13 @@ bool callbackParametersValid(AMX* amx, cell callbackParam, cell formatParam, cel
 		const cell parameter = params[firstParam + i];
 		if (kind == 'd' || kind == 'i' || kind == 'f' || kind == 'b')
 		{
+			cell number = 0;
+			if (!readVariadicNumber(amx, parameter, number)) return false;
 			if (pendingArray != static_cast<size_t>(-1))
 			{
-				if (parameter <= 0 || static_cast<size_t>(parameter) > MAX_CALLBACK_ARRAY_CELLS) return false;
+				if (number <= 0 || static_cast<size_t>(number) > MAX_CALLBACK_ARRAY_CELLS) return false;
 				NativePawnScript* arrayScript = pawnScriptFor(amx);
-				if (!arrayScript || !pawnArrayRangeValid(*arrayScript, params[firstParam + i - 1], static_cast<size_t>(parameter))) return false;
+				if (!arrayScript || !pawnArrayRangeValid(*arrayScript, params[firstParam + i - 1], static_cast<size_t>(number))) return false;
 				cell* arrayAddress = nullptr;
 				if (pawnGetAddr(amx, params[firstParam + i - 1], &arrayAddress) != AMX_ERR_NONE || !arrayAddress) return false;
 				pendingArray = static_cast<size_t>(-1);
@@ -588,14 +639,14 @@ bool capturePawnCallback(AMX* amx, cell callbackParam, cell formatParam, cell* p
 		if (kind == 'd' || kind == 'i' || kind == 'f' || kind == 'b')
 		{
 			PawnCallbackArg arg;
-			arg.value = parameter;
+			if (!readVariadicNumber(amx, parameter, arg.value)) return false;
 			if (pendingArray != static_cast<size_t>(-1))
 			{
-				if (parameter <= 0 || static_cast<size_t>(parameter) > MAX_CALLBACK_ARRAY_CELLS) return false;
-				if (!pawnArrayRangeValid(*script, params[firstParam + i - 1], static_cast<size_t>(parameter))) return false;
+				if (arg.value <= 0 || static_cast<size_t>(arg.value) > MAX_CALLBACK_ARRAY_CELLS) return false;
+				if (!pawnArrayRangeValid(*script, params[firstParam + i - 1], static_cast<size_t>(arg.value))) return false;
 				cell* arrayAddress = nullptr;
 				if (pawnGetAddr(amx, params[firstParam + i - 1], &arrayAddress) != AMX_ERR_NONE || !arrayAddress) return false;
-				prepared->args[pendingArray].array.assign(arrayAddress, arrayAddress + parameter);
+				prepared->args[pendingArray].array.assign(arrayAddress, arrayAddress + arg.value);
 				pendingArray = static_cast<size_t>(-1);
 			}
 			prepared->args.push_back(std::move(arg));
@@ -866,6 +917,7 @@ cell AMX_NATIVE_CALL Native_DisconnectBot(AMX*, cell*)
 	DiscordBridgeComponent* bridge = component();
 	return bridge && bridge->requestDisconnect() ? 1 : 0;
 }
+
 
 cell AMX_NATIVE_CALL Native_SetTextEncoding(AMX*, cell* params)
 {

@@ -355,7 +355,8 @@ native DBR_TriggerBotTypingIndicator(DiscordChannel:channel);
 // -----------------------------------------------------------------------------
 
 native DiscordUser:DBR_FindUserByID(const user_id[]);
-native DiscordUser:DBR_FindUserByName(const user_name[]);
+// The discriminator is optional and only applies to legacy accounts.
+native DiscordUser:DBR_FindUserByName(const user_name[], const discriminator[] = "");
 native DBR_FetchUser(DiscordUser:user, const callback[], const format[] = "", {Float, _}:...);
 native DBR_GetUserID(DiscordUser:user, dest[DISCORD_ID_SIZE], max_size = sizeof dest);
 native DBR_GetUserName(DiscordUser:user, dest[], max_size = sizeof dest);

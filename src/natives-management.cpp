@@ -227,7 +227,7 @@ cell AMX_NATIVE_CALL Native_FetchGuildMember(AMX* amx, cell* params)
 		if (bridge && member.is_object())
 		{
 			if (auto user = member.find("user"); user != member.end() && user->is_object()) bridge->upsertUserFromJson(user->dump());
-			if (auto* guild = static_cast<DiscordGuild*>(bridge->findGuildById(guildId))) guild->updateMemberFromJson(response.body, userId);
+			if (DiscordGuild* guild = ensureGuildCached(guildId)) guild->updateMemberFromJson(response.body, userId);
 			userHandle = assignUserHandle(userId);
 		}
 		if (callback) executePawnCallback(*callback, { assignGuildHandle(guildId), userHandle });

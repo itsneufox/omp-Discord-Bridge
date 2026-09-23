@@ -368,7 +368,7 @@ void cacheResolvedEntities(InteractionState& state)
 			if (user.is_object()) bridge->upsertUserFromJson(user.dump(-1, ' ', false, DiscordJson::error_handler_t::replace));
 		}
 	}
-	DiscordGuild* guild = state.guildId.empty() ? nullptr : static_cast<DiscordGuild*>(bridge->findGuildById(state.guildId));
+	DiscordGuild* guild = ensureGuildCached(state.guildId);
 	if (const DiscordJson* members = section("members"); members && guild)
 	{
 		for (auto it = members->begin(); it != members->end(); ++it)
@@ -469,7 +469,7 @@ void dispatchInteraction(const std::string& json)
 		{
 			try { state.permissions = std::stoull(permissions->get<std::string>()); } catch (...) { state.permissions = 0; }
 		}
-		if (auto* guild = static_cast<DiscordGuild*>(bridge->findGuildById(state.guildId)); guild && !state.userId.empty())
+		if (DiscordGuild* guild = ensureGuildCached(state.guildId); guild && !state.userId.empty())
 		{
 			guild->updateMemberFromJson(memberIt->dump(), state.userId);
 		}

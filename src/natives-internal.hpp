@@ -62,6 +62,10 @@ NativePawnScript* pawnScriptFor(AMX* amx);
 NativePawnScript* pawnScriptForId(int scriptId);
 NativePawnScript* findPawnScriptWithPublic(const char* name, NativePawnScript* preferred = nullptr);
 
+// Returns the cached guild, creating it from its ID when the gateway has
+// not cached it, so that member data has somewhere to live.
+DiscordGuild* ensureGuildCached(const std::string& guildId);
+
 // Reads a script string converted to UTF-8 for Discord.
 std::string getAmxString(AMX* amx, cell amxParam);
 // Reads a script string exactly as the script stores it.

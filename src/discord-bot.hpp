@@ -63,6 +63,7 @@ private:
 
 	void enqueueGatewayMessage(const std::string& payload);
 	void runRestTasks();
+	void startRestWorker();
 	void handleGatewayMessage(const std::string& payload);
 	void completeInitialGuildSync();
 	void serviceMemberSyncRetries();
