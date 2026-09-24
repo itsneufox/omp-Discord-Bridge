@@ -527,7 +527,9 @@ bool readVariadicNumber(AMX*, cell address, cell& value)
 	// 'd'/'i'/'f'/'b' variadic arguments are pushed BY VALUE by the Pawn
 	// compiler (same convention as SetTimerEx's {Float,_}:... tail), so
 	// `address` already IS the value. Only 's'/'a' carry a real AMX address.
+	printf("[DiscordBridge] readVariadicNumber: input=%d\n", address);
 	value = address;
+	printf("[DiscordBridge] readVariadicNumber: value=%d\n", value);
 	return true;
 }
 
