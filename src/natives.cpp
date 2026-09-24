@@ -522,14 +522,12 @@ bool executePawnCallback(const PreparedPawnCallback& prepared, const std::vector
 	return error == AMX_ERR_NONE;
 }
 
-// Pawn passes every variadic argument by reference: params[] holds the address
-// of the value, so a number has to be read through it.  Strings and arrays are
-// already addresses of the data itself.
-bool readVariadicNumber(AMX* amx, cell address, cell& value)
+bool readVariadicNumber(AMX*, cell address, cell& value)
 {
-	cell* reference = nullptr;
-	if (pawnGetAddr(amx, address, &reference) != AMX_ERR_NONE || !reference) return false;
-	value = *reference;
+	// 'd'/'i'/'f'/'b' variadic arguments are pushed BY VALUE by the Pawn
+	// compiler (same convention as SetTimerEx's {Float,_}:... tail), so
+	// `address` already IS the value. Only 's'/'a' carry a real AMX address.
+	value = address;
 	return true;
 }
 
