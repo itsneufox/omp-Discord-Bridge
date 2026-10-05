@@ -8,6 +8,7 @@
 #include "discord-interface.hpp"
 #include "discord-bot.hpp"
 #include "discord-message-batch-config.hpp"
+#include "discord-update-checker.hpp"
 #include "samp-pawn.hpp"
 #include <Server/Components/Pawn/pawn.hpp>
 #include <Impl/pool_impl.hpp>
@@ -56,7 +57,9 @@ private:
 	int configuredIntents_ = DISCORD_DEFAULT_INTENTS;
 	int configuredBatchIntervalMs_ = DiscordMessageBatchConfig::DEFAULT_INTERVAL_MS;
 	bool configuredBatchRateLimited_ = false;
+	bool configuredUpdateCheck_ = true;
 	bool configurationLoaded_ = false;
+	std::unique_ptr<DiscordUpdateChecker> updateChecker_;
 	// DBR_DisconnectBot can run inside a callback dispatched by the bot's own
 	// update().  Destroying the bot there would free the object that is still
 	// running, so in that case the disconnect waits until update() returns.
@@ -65,6 +68,7 @@ private:
 	// the plugin connects; filterscripts can be reloaded any time) still get
 	// DBR_OnReady, on the next tick so their init callbacks run first.
 	std::vector<int> scriptsAwaitingReady_;
+	void startUpdateCheck();
 	void queueReadyForScript(IPawnScript* script);
 	void deliverReadyToLateScripts();
 	bool disconnectRequested_ = false;
@@ -117,7 +121,8 @@ public:
 	int getMessageBatchInterval() { loadConfiguration(); return configuredBatchIntervalMs_; }
 	bool batchRateLimitedMessages() { loadConfiguration(); return configuredBatchRateLimited_; }
 	bool start(StringView token, int intents, StringView channelId = {}, StringView channelName = {},
-		int batchIntervalMs = DiscordMessageBatchConfig::DEFAULT_INTERVAL_MS, bool batchRateLimited = false);
+		int batchIntervalMs = DiscordMessageBatchConfig::DEFAULT_INTERVAL_MS, bool batchRateLimited = false,
+		bool checkForUpdates = true);
 
 	static DiscordBridgeComponent* getInstance();
 

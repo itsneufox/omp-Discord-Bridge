@@ -134,6 +134,7 @@ add_library(discord-bridge SHARED
 	src/discord-component.cpp
 	src/discord-websocket.cpp
 	src/discord-tls.cpp
+	src/discord-update-checker.cpp
 	src/discord-http.cpp
 	src/discord-log.cpp
 	src/discord-bot.cpp

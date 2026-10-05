@@ -53,6 +53,13 @@ int configuredIntents()
 		return DISCORD_DEFAULT_INTENTS;
 	}
 }
+
+bool configuredUpdateCheck()
+{
+	const std::string value = firstValue(
+		"DISCORD_CHECK_FOR_UPDATES", "discord_check_for_updates", "discord.check_for_updates");
+	return value.empty() || DiscordMessageBatchConfig::enabled(value);
+}
 }
 
 PLUGIN_EXPORT unsigned int PLUGIN_CALL Supports()
@@ -78,7 +85,8 @@ PLUGIN_EXPORT bool PLUGIN_CALL Load(void** data)
 		firstValue("DISCORD_BATCH_INTERVAL_MS", "discord_batch_interval_ms", "discord.batch_interval_ms"));
 	const bool batchRateLimited = DiscordMessageBatchConfig::enabled(
 		firstValue("DISCORD_BATCH_RATE_LIMITED", "discord_batch_rate_limited", "discord.batch_rate_limited"));
-	DiscordBridgeComponent::getInstance()->start(token, configuredIntents(), channelId, channelName, batchInterval, batchRateLimited);
+	DiscordBridgeComponent::getInstance()->start(token, configuredIntents(), channelId, channelName,
+		batchInterval, batchRateLimited, configuredUpdateCheck());
 
 	if (logprintf)
 	{

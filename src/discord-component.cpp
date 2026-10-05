@@ -110,7 +110,23 @@ void DiscordBridgeComponent::onReady()
 {
 	isInitialized_ = true;
 	loadConfiguration();
+	startUpdateCheck();
 	connectConfiguredBot();
+}
+
+void DiscordBridgeComponent::startUpdateCheck()
+{
+	if (!configuredUpdateCheck_ || updateChecker_) return;
+	try
+	{
+		updateChecker_ = std::make_unique<DiscordUpdateChecker>();
+		updateChecker_->start(DISCORD_BRIDGE_VERSION);
+	}
+	catch (...)
+	{
+		// A best-effort update check must never prevent the component from loading.
+		updateChecker_.reset();
+	}
 }
 
 void DiscordBridgeComponent::loadConfiguration()
@@ -124,6 +140,7 @@ void DiscordBridgeComponent::loadConfiguration()
 	const char* envIntents = std::getenv("DISCORD_BOT_INTENTS");
 	const char* envChannelId = std::getenv("DISCORD_CHANNEL_ID");
 	const char* envChannelName = std::getenv("DISCORD_CHANNEL_NAME");
+	const char* envUpdateCheck = std::getenv("DISCORD_CHECK_FOR_UPDATES");
 
 	configuredToken_.clear();
 	configuredIntents_ = DISCORD_DEFAULT_INTENTS;
@@ -183,6 +200,16 @@ void DiscordBridgeComponent::loadConfiguration()
 		bool* configEnabled = core_->getConfig().getBool("discord_batch_rate_limited");
 		if (!configEnabled) configEnabled = core_->getConfig().getBool("discord.batch_rate_limited");
 		configuredBatchRateLimited_ = configEnabled && *configEnabled;
+	}
+	if (envUpdateCheck && *envUpdateCheck)
+	{
+		configuredUpdateCheck_ = DiscordMessageBatchConfig::enabled(envUpdateCheck);
+	}
+	else
+	{
+		bool* configEnabled = core_->getConfig().getBool("discord_check_for_updates");
+		if (!configEnabled) configEnabled = core_->getConfig().getBool("discord.check_for_updates");
+		configuredUpdateCheck_ = configEnabled ? *configEnabled : true;
 	}
 
 	if (envChannelId && *envChannelId)
@@ -302,6 +329,10 @@ void DiscordBridgeComponent::provideConfiguration(ILogger& logger, IEarlyConfig&
 	{
 		config.setBool("discord_batch_rate_limited", false);
 	}
+	if (defaults || config.getType("discord_check_for_updates") == ConfigOptionType_None)
+	{
+		config.setBool("discord_check_for_updates", true);
+	}
 
 	if (defaults || config.getType("discord.channel_name") == ConfigOptionType_None)
 	{
@@ -317,6 +348,7 @@ void DiscordBridgeComponent::provideConfiguration(ILogger& logger, IEarlyConfig&
 	config.addAlias("discord.intents", "discord_bot_intents", true);
 	config.addAlias("discord.batch_interval_ms", "discord_batch_interval_ms", true);
 	config.addAlias("discord.batch_rate_limited", "discord_batch_rate_limited", true);
+	config.addAlias("discord.check_for_updates", "discord_check_for_updates", true);
 	config.addAlias("discord_channel_name", "discord.channel_name", true);
 	config.addAlias("discord_channel_id", "discord.channel_id", true);
 }
@@ -331,7 +363,7 @@ void DiscordBridgeComponent::onFree(IComponent* component)
 }
 
 bool DiscordBridgeComponent::start(StringView token, int intents, StringView channelId, StringView channelName,
-	int batchIntervalMs, bool batchRateLimited)
+	int batchIntervalMs, bool batchRateLimited, bool checkForUpdates)
 {
 	sampMode_ = true;
 	pawn_ = &sampPawn_;
@@ -342,7 +374,9 @@ bool DiscordBridgeComponent::start(StringView token, int intents, StringView cha
 	configuredIntents_ = intents;
 	configuredBatchIntervalMs_ = batchIntervalMs > 0 ? batchIntervalMs : DiscordMessageBatchConfig::DEFAULT_INTERVAL_MS;
 	configuredBatchRateLimited_ = batchRateLimited;
+	configuredUpdateCheck_ = checkForUpdates;
 	configurationLoaded_ = true;
+	startUpdateCheck();
 	return connectConfiguredBot();
 }
 
@@ -604,6 +638,15 @@ void DiscordBridgeComponent::onTick(Microseconds, TimePoint)
 	// such as FCNPC's).
 	try
 	{
+		if (updateChecker_)
+		{
+			std::string latestVersion;
+			if (updateChecker_->takeLatestVersion(latestVersion) && !latestVersion.empty())
+			{
+				DiscordLogMessage(core_, "[DiscordBridge] Update available: " + latestVersion + " (current v" +
+					DISCORD_BRIDGE_VERSION + "). Download: https://github.com/itsneufox/omp-Discord-Bridge/releases/latest");
+			}
+		}
 		ServiceDiscordNatives();
 		deliverReadyToLateScripts();
 		if (bot_)

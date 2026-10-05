@@ -57,7 +57,7 @@ Exemplos completos: [em português](examples/pt-BR/README.md) · [in English](ex
 
 ### 1. Instale o plugin
 
-Baixe o pacote na [página de releases](https://github.com/devbluen/omp-Discord-Bridge/releases)
+Baixe o pacote na [página de releases](https://github.com/itsneufox/omp-Discord-Bridge/releases)
 e copie os arquivos:
 
 | Servidor | Onde copiar |
@@ -166,9 +166,16 @@ public OnGameModeInit()
 | `discord_bot_intents` | `DISCORD_BOT_INTENTS` | Intents do gateway (padrão: todos; veja [Escolhendo os intents](#escolhendo-os-intents)) |
 | `discord_channel_id` | `DISCORD_CHANNEL_ID` | Canal devolvido por `DBR_FindConfiguredChannel()` |
 | `discord_channel_name` | `DISCORD_CHANNEL_NAME` | Mesmo que acima, pelo nome do canal |
+| `discord_check_for_updates` | `DISCORD_CHECK_FOR_UPDATES` | Verifica se há uma nova versão estável no GitHub (ativado por padrão) |
 
 Ligue o servidor. Quando o bot conectar, `DBR_OnReady` é chamado e tudo está
 pronto para uso.
+
+Ao iniciar, o plugin verifica em segundo plano se há uma nova versão estável no
+GitHub e registra um link para baixá-la. A verificação é opcional e não baixa
+nem instala arquivos. Para desativá-la, defina `discord_check_for_updates` como
+`false` no `config.json`, use `discord_check_for_updates 0` no `server.cfg` ou
+defina `DISCORD_CHECK_FOR_UPDATES=0` no ambiente.
 
 Para desligar o bot, chame `DBR_DisconnectBot()`. Ele fica offline no Discord
 na hora e `DBR_OnDisconnected` é chamado; seus comandos continuam registrados,
@@ -533,7 +540,7 @@ se `VCPKG_ROOT` está definida. No Linux, instale `libssl-dev` e
 Clone o repositório com os submódulos, que trazem os SDKs do open.mp e do AMX:
 
 ```sh
-git clone --recursive https://github.com/devbluen/omp-Discord-Bridge
+git clone --recursive https://github.com/itsneufox/omp-Discord-Bridge
 cd omp-Discord-Bridge
 ```
 

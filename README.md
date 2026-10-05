@@ -57,7 +57,7 @@ Complete examples: [in English](examples/en/README.md) · [em português](exampl
 
 ### 1. Install the plugin
 
-Download the package from the [releases page](https://github.com/devbluen/omp-Discord-Bridge/releases)
+Download the package from the [releases page](https://github.com/itsneufox/omp-Discord-Bridge/releases)
 and copy the files:
 
 | Server | Where to copy |
@@ -172,9 +172,17 @@ public OnGameModeInit()
 | `discord_bot_intents` | `DISCORD_BOT_INTENTS` | Gateway intents (default: all; see [Choosing intents](#choosing-intents)) |
 | `discord_channel_id` | `DISCORD_CHANNEL_ID` | Channel returned by `DBR_FindConfiguredChannel()` |
 | `discord_channel_name` | `DISCORD_CHANNEL_NAME` | Same as above, by channel name |
+| `discord_check_for_updates` | `DISCORD_CHECK_FOR_UPDATES` | Check GitHub for a newer stable release (default: enabled) |
 
 Start the server. Once the bot connects, `DBR_OnReady` is called and
 everything is ready to use.
+
+At startup, the plugin checks GitHub for a newer stable release in the
+background and logs a download link when one is available. The check is
+best-effort and never downloads or installs files. To disable it, set
+`discord_check_for_updates` to `false` in `config.json`, use
+`discord_check_for_updates 0` in `server.cfg`, or set
+`DISCORD_CHECK_FOR_UPDATES=0` in the environment.
 
 To shut the bot down, call `DBR_DisconnectBot()`. It goes offline on Discord
 right away and `DBR_OnDisconnected` is called; your commands stay registered,
@@ -537,7 +545,7 @@ installed where CMake can see them. On Windows, build with the vcpkg preset
 Clone the repository recursively so the open.mp and AMX SDKs come along:
 
 ```sh
-git clone --recursive https://github.com/devbluen/omp-Discord-Bridge
+git clone --recursive https://github.com/itsneufox/omp-Discord-Bridge
 cd omp-Discord-Bridge
 ```
 
