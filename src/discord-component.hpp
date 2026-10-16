@@ -132,7 +132,7 @@ public:
 	void storeUser(std::unique_ptr<DiscordUser> user);
 	void storeMessage(std::unique_ptr<DiscordMessage> message);
 	void storeRole(std::unique_ptr<DiscordRole> role);
-	DiscordChannel* upsertChannelFromJson(const std::string& json);
+	DiscordChannel* upsertChannelFromJson(const std::string& json, StringView guildId = {});
 	DiscordGuild* upsertGuildFromJson(const std::string& json, bool includeMembers = true);
 	DiscordUser* upsertUserFromJson(const std::string& json);
 	DiscordUser* findUserByNameAndDiscriminator(StringView username, StringView discriminator);

@@ -265,6 +265,60 @@ if(BUILD_TESTING)
 		${CMAKE_CURRENT_SOURCE_DIR}/third_party
 	)
 	add_test(NAME discord-bridge-builders COMMAND discord-bridge-builders-tests)
+	add_executable(discord-bridge-channel-cache-tests
+		tests/channel-cache-tests.cpp
+		src/discord-component.cpp
+		src/discord-channel.cpp
+		src/discord-guild.cpp
+		src/discord-user.cpp
+		src/discord-role.cpp
+		src/discord-message.cpp
+		src/discord-bot.cpp
+		src/discord-websocket.cpp
+		src/discord-http.cpp
+		src/discord-tls.cpp
+		src/discord-log.cpp
+		src/discord-builders.cpp
+		src/discord-update-checker.cpp
+		src/natives.cpp
+		src/natives-interactions.cpp
+		src/natives-management.cpp
+		src/samp-pawn.cpp
+		src/samp-amx.cpp
+		src/samp-config.cpp
+		src/utils.cpp
+	)
+	target_compile_definitions(discord-bridge-channel-cache-tests PRIVATE
+		HAVE_STDINT_H=1
+		PAWN_CELL_SIZE=32
+	)
+	target_include_directories(discord-bridge-channel-cache-tests PRIVATE
+		${CMAKE_CURRENT_SOURCE_DIR}/src
+		${CMAKE_CURRENT_SOURCE_DIR}/third_party
+		${CMAKE_CURRENT_BINARY_DIR}
+	)
+	target_link_libraries(discord-bridge-channel-cache-tests PRIVATE
+		OMP-SDK
+		${Boost_LIBRARIES}
+	)
+	if(DISCORD_BRIDGE_STATIC_DEPS)
+		target_link_libraries(discord-bridge-channel-cache-tests PRIVATE
+			${OPENSSL_SSL_LIBRARY}
+			${OPENSSL_CRYPTO_LIBRARY}
+		)
+	else()
+		target_link_libraries(discord-bridge-channel-cache-tests PRIVATE
+			OpenSSL::SSL
+			OpenSSL::Crypto
+		)
+	endif()
+	if(WIN32)
+		target_link_libraries(discord-bridge-channel-cache-tests PRIVATE Crypt32)
+	endif()
+	if(UNIX AND NOT APPLE)
+		target_link_libraries(discord-bridge-channel-cache-tests PRIVATE rt pthread)
+	endif()
+	add_test(NAME discord-bridge-channel-cache COMMAND discord-bridge-channel-cache-tests)
 endif()
 
 if(BUILD_TESTING)
