@@ -738,30 +738,39 @@ void DiscordBridgeComponent::storeRole(std::unique_ptr<DiscordRole> role)
 	roles_[id] = std::move(role);
 }
 
-DiscordChannel* DiscordBridgeComponent::upsertChannelFromJson(const std::string& json)
+DiscordChannel* DiscordBridgeComponent::upsertChannelFromJson(const std::string& json, StringView guildId)
 {
 	const DiscordJson data = DiscordJson::parse(json, nullptr, false);
 	if (data.is_discarded() || !data.is_object() || !(data.find("id") != data.end()) || !data["id"].is_string()) return nullptr;
 	const std::string id = data["id"].get<std::string>();
 	const auto it = channels_.find(id);
+	
 	if (it != channels_.end())
 	{
 		it->second->updateFromJson(json);
+		if (!guildId.empty()) it->second->setGuildId(guildId);
+		
 		if (!it->second->getGuildId().empty())
 		{
 			if (auto guild = static_cast<DiscordGuild*>(findGuildById(it->second->getGuildId()))) guild->addChannelId(it->second->getChannelId());
 		}
 		return it->second.get();
 	}
+	
 	if (!bot_) return nullptr;
+	
 	auto channel = std::make_unique<DiscordChannel>(bot_.get(), id, jsonString(data, "name"), static_cast<EDiscordChannelType>(jsonInt(data, "type", 0)));
 	channel->updateFromJson(json);
+	if (!guildId.empty()) channel->setGuildId(guildId);
+	
 	DiscordChannel* raw = channel.get();
 	storeChannel(std::move(channel));
+	
 	if (!raw->getGuildId().empty())
 	{
 		if (auto guild = static_cast<DiscordGuild*>(findGuildById(raw->getGuildId()))) guild->addChannelId(raw->getChannelId());
 	}
+	
 	return raw;
 }
 
@@ -790,7 +799,7 @@ DiscordGuild* DiscordBridgeComponent::upsertGuildFromJson(const std::string& jso
 	{
 		for (const auto& channel : data["channels"])
 		{
-			if (channel.is_object()) upsertChannelFromJson(channel.dump(-1, ' ', false, DiscordJson::error_handler_t::replace));
+			if (channel.is_object()) upsertChannelFromJson(channel.dump(-1, ' ', false, DiscordJson::error_handler_t::replace), id);
 		}
 	}
 	if ((data.find("roles") != data.end()) && data["roles"].is_array())
